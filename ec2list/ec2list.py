@@ -60,6 +60,14 @@ def get_private_ip(i):
     return str(i.private_ip_address).ljust(15)
 
 
+def get_pub_dns(i):
+    return i.public_dns_name.rjust(48)
+
+
+def get_pub_ip(i):
+    return str(i.ip_address).ljust(15)
+
+
 def get_inst_type(i):
     return i.instance_type.ljust(12)
 
@@ -79,12 +87,18 @@ def print_list_head(region,total,up,down,other):
     print(spacing + '='*len(place))
     print(spacing + place)
     print(spacing + '='*len(place) + stats.rjust(153-len(place)))
+
     # table head
     title = []
     dash = []
+    if args.pub:
+        view = 'Public'
+    else:
+        view = 'Private'
+
     title.append("Name".ljust(40))
     dash.append('-'*40)
-    title.append(' | ' + 'Private IP'.ljust(15))
+    title.append(' | ' + (view + ' IP').ljust(15))
     dash.append('-|-' + '-'*15)
     title.append(' | ' + 'Inst. ID'.ljust(10))
     dash.append('-|-' + '-'*10)
@@ -92,7 +106,7 @@ def print_list_head(region,total,up,down,other):
     dash.append('-|-' + '-'*13)
     title.append(' | ' + 'Inst. Type'.ljust(12))
     dash.append('-|-' + '-'*12)
-    title.append(' | ' + 'Private DNS'.ljust(48))
+    title.append(' | ' + (view + ' DNS').ljust(48))
     dash.append('-|-' + '-'*48)
     print(spacing+''.join(dash))
     print(spacing+''.join(title))
@@ -118,6 +132,10 @@ def defineParser():
                         help="AWS Region(s) you wish to look for instances. Specific the region(s) or 'all'")
     parser.add_argument("--profile", dest = 'aws_profile', required=False, default='default',
                         help="The profile config you want to use from awscli/boto")
+
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument('--public', dest = 'pub', action='store_true', help="show public ip/dns")
+    group.add_argument('--private', dest = 'priv', action='store_true', help="show private ip/dns (default)")
 
     parser.add_argument("-nh", "--no-head", dest = 'showhead', default=True, required=False,
                         action='store_false', help="don't show table head")
@@ -167,7 +185,7 @@ def main():
         for r in reservations:
             for i in r.instances:
                 a_instances.append((get_name(i,False), get_name(i,True), get_private_ip(i), get_inst_id(i),
-                                    get_inst_placement(i), get_inst_type(i), get_privat_dns(i)))
+                                    get_inst_placement(i), get_inst_type(i), get_privat_dns(i), get_pub_ip(i), get_pub_dns(i)))
                 if i.state == 'running':
                     i_count_up += 1
                 elif i.state == 'stopped':
@@ -182,5 +200,9 @@ def main():
             print_list_head(reg.name, i_count_total, i_count_up, i_count_down, i_count_other)
 
         for inst in a_instances:
-            name, name_color, private_ip, inst_id, inst_placement, inst_type, pri_dns = inst
-            print(spacing + ' | '.join((name_color, private_ip, inst_id, inst_placement, inst_type, pri_dns)))
+            name, name_color, private_ip, inst_id, inst_placement, inst_type, pri_dns, pub_ip, pub_dns = inst
+            if args.pub:
+                line = spacing + ' | '.join((name_color, pub_ip, inst_id, inst_placement, inst_type, pub_dns))
+            else:
+                line = spacing + ' | '.join((name_color, private_ip, inst_id, inst_placement, inst_type, pri_dns))
+            print(line)
