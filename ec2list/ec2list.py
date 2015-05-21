@@ -57,7 +57,7 @@ def get_name(i, color=True):
 
 
 def get_privat_dns(i):
-    return i.private_dns_name.rjust(43)
+    return i.private_dns_name.rjust(48)
 
 
 def get_private_ip(i):
@@ -76,7 +76,14 @@ def get_inst_placement(i):
     return i.placement.ljust(12)
 
 
-def print_list_head():
+def print_list_head(region,total,up,down,other):
+    place = 'Region: ' + region
+    stats = 'total: ' + str(total) + ' - up: ' + str(up) + ' - down: ' + str(down) + ' - other: ' + str(other)
+    # main head
+    print(spacing + '='*len(place))
+    print(spacing + place)
+    print(spacing + '='*len(place) + stats.rjust(153-len(place)))
+    # table head
     title = []
     dash = []
     title.append("Name".ljust(40))
@@ -89,33 +96,39 @@ def print_list_head():
     dash.append('-|-' + '-'*13)
     title.append(' | ' + 'Inst. Type'.ljust(12))
     dash.append('-|-' + '-'*12)
-    title.append(' | ' + 'Private DNS'.rjust(43))
-    dash.append('-|-' + '-'*43)
-    print spacing+''.join(dash)
-    print spacing+''.join(title)
-    print spacing+''.join(dash)
+    title.append(' | ' + 'Private DNS'.ljust(48))
+    dash.append('-|-' + '-'*48)
+    print(spacing+''.join(dash))
+    print(spacing+''.join(title))
+    print(spacing+''.join(dash))
 
 
-def print_prog_head():
-    print spacing + '########   ######    #######   ##        ####   ######   ########'
-    print spacing + '##        ##    ##  ##     ##  ##         ##   ##    ##     ##   '
-    print spacing + '##        ##               ##  ##         ##   ##           ##   '
-    print spacing + '######    ##         #######   ##         ##    ######      ##   '
-    print spacing + '##        ##        ##         ##         ##         ##     ##   '
-    print spacing + '##        ##    ##  ##         ##         ##   ##    ##     ##   '
-    print spacing + '########   ######   #########  ########  ####   ######      ##   '
-    print spacing
+def print_prog_banner():
+    print(spacing + '########   ######    #######   ##        ####   ######   ########')
+    print(spacing + '##        ##    ##  ##     ##  ##         ##   ##    ##     ##   ')
+    print(spacing + '##        ##               ##  ##         ##   ##           ##   ')
+    print(spacing + '######    ##         #######   ##         ##    ######      ##   ')
+    print(spacing + '##        ##        ##         ##         ##         ##     ##   ')
+    print(spacing + '##        ##    ##  ##         ##         ##   ##    ##     ##   ')
+    print(spacing + '########   ######   #########  ########  ####   ######      ##   ')
+    print(spacing)
 
 
 def defineParser():
-    parser = argparse.ArgumentParser(description="Script for commandline worker, to list your ec2 instances. Support's awscli/boto profiles and multiple aws regions.")
+    parser = argparse.ArgumentParser(description="Script for commandline worker, to list your ec2 instances. "
+                                                 "Support's awscli/boto profiles and multiple aws regions.")
 
-    parser.add_argument("--region", dest = 'aws_region', required=False, nargs='+', default=['eu-central-1'], help="AWS Region(s) you wish to look for instances. Specific the region(s) or 'all'")
-    parser.add_argument("--profile", dest = 'aws_profile', required=False, default='default', help="The profile config you want to use from awscli/boto")
+    parser.add_argument("--region", dest = 'aws_region', required=False, nargs='+', default=['eu-central-1'],
+                        help="AWS Region(s) you wish to look for instances. Specific the region(s) or 'all'")
+    parser.add_argument("--profile", dest = 'aws_profile', required=False, default='default',
+                        help="The profile config you want to use from awscli/boto")
 
-    parser.add_argument("-nh", "--no-head", dest = 'showhead', default=True, required=False, action='store_false', help="don't show table head")
-    parser.add_argument("-nb", "--no-banner", dest = 'showbanner', default=True, required=False, action='store_false', help="don't show programm")
-    parser.add_argument("-cls", "--clear-screen", dest = 'cls', required=False, action='store_true', help="Clear screen before printing output")
+    parser.add_argument("-nh", "--no-head", dest = 'showhead', default=True, required=False,
+                        action='store_false', help="don't show table head")
+    parser.add_argument("-nb", "--no-banner", dest = 'showbanner', default=True, required=False,
+                        action='store_false', help="don't show programm")
+    parser.add_argument("-cls", "--clear-screen", dest = 'cls', required=False,
+                        action='store_true', help="Clear screen before printing output")
 
     return parser
 
@@ -128,7 +141,7 @@ def main():
 
     global spacing
     if args.showhead:
-        spacing = '  '
+        spacing = ' '
     else:
         spacing = ''
 
@@ -143,34 +156,35 @@ def main():
         os.system('cls' if os.name == 'nt' else 'clear')
 
     if args.showbanner:
-        print_prog_head()
+        print_prog_banner()
 
     for reg in rr:
-        if args.showhead:
-            place = 'Region: ' + reg.name
-            print spacing + '='*len(place)
-            print spacing + place
-            print spacing + '='*len(place)
-
         conn = reg.connect(profile_name=args.aws_profile)
         reservations = conn.get_all_instances()
 
         a_instances = []
+        i_count_total = 0
+        i_count_up = 0
+        i_count_down = 0
+        i_count_other = 0
 
         for r in reservations:
             for i in r.instances:
-                a_instances.append((get_name(i,False), get_name(i,True), get_private_ip(i), get_inst_id(i), get_inst_placement(i), get_inst_type(i), get_privat_dns(i)))
+                a_instances.append((get_name(i,False), get_name(i,True), get_private_ip(i), get_inst_id(i),
+                                    get_inst_placement(i), get_inst_type(i), get_privat_dns(i)))
+                if i.state == 'running':
+                    i_count_up += 1
+                elif i.state == 'stopped':
+                    i_count_down += 1
+                else:
+                    i_count_other += 1
+                i_count_total += 1
 
         a_instances.sort()
 
         if args.showhead:
-            print_list_head()
+            print_list_head(reg.name, i_count_total, i_count_up, i_count_down, i_count_other)
 
         for inst in a_instances:
             name, name_color, private_ip, inst_id, inst_placement, inst_type, pri_dns = inst
-            print spacing + ' | '.join((name_color, private_ip, inst_id, inst_placement, inst_type, pri_dns))
-
-
-# Run Main
-if __name__ == "__main__":
-    main()
+            print(spacing + ' | '.join((name_color, private_ip, inst_id, inst_placement, inst_type, pri_dns)))
