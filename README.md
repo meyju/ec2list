@@ -2,6 +2,7 @@ ec2list
 =======
 Script for commandline worker, to list your ec2 instances. Support's awscli/boto profiles and multiple aws regions.
 
+![ec2list screenshot](_docs/img/ec2list.png?raw=true "ec2list screenshot")
 
 Requirements
 ------------

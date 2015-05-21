@@ -19,7 +19,6 @@ lib64/
 parts/
 sdist/
 var/
-_docs/
 *.egg-info/
 .installed.cfg
 *.egg
@@ -59,3 +58,6 @@ target/
 
 # IDE
 .idea/
+
+# OS X
+.DS_Store
