@@ -42,7 +42,9 @@ setup(
 
     keywords='aws amazon web services ec2 list admin',
 
-    packages=find_packages(),
+    zip_safe=True,
+
+    packages=find_packages(exclude=['build', '_docs', 'templates']),
     install_requires=['boto>=2.36.0'],
 
     # To provide executable scripts, use entry points in preference to the
