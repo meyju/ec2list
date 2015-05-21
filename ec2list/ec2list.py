@@ -1,12 +1,8 @@
 #!/usr/bin/python
 
-#############################################################
-# Autor: Julian Meyer <jm@julianmeyer.de>                   #
-# Info: Script for commandline worker, to list your ec2     #
-#       instances. Support's awscli/boto profiles and       #
-#       multiple aws regions.                               #
-# Version: 0.1                                              #
-#############################################################
+#
+#   Autor: Julian Meyer <jm@julianmeyer.de>
+#
 #
 #   This program is free software: you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
@@ -21,7 +17,7 @@
 #   You should have received a copy of the GNU General Public License
 #   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-#############################################################
+
 
 import boto
 import boto.ec2
