@@ -23,6 +23,7 @@ import boto
 import boto.ec2
 import os
 import argparse
+import fnmatch
 
 
 class ansi_color:
@@ -162,8 +163,16 @@ def main():
     # All or specific regions?
     if len(args.aws_region) == 1 and args.aws_region[0] == "all":
         rr = boto.ec2.regions()
+    elif len(args.aws_region) == 1 and (("*" in str(args.aws_region)) or ("?" in str(args.aws_region))):
+        rr = []
+        for x in boto.ec2.regions():
+            if fnmatch.fnmatch(str(getattr(x,'name')), str(args.aws_region)[2:-2]):
+                rr.append(x)
     else:
         rr = [boto.ec2.get_region(x) for x in args.aws_region]
+
+    # Sort regions
+    rr.sort(key=lambda x: x.name)
 
     # Clear screen
     if args.cls:
