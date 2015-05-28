@@ -33,6 +33,11 @@ List instances from the regions eu-central-1 and eu-west-1
 
     ec2list --region eu-central-1 eu-west-1
 
+List instances in multiple regions via wildcard
+
+    ec2list --region eu*
+
+
 List instances from all regions
 
     ec2list --region all
@@ -40,7 +45,11 @@ List instances from all regions
 List instances with minimal output
 
     ec2list --no-head --no-banner --clear-screen
+    ec2list -nh -nb -cls
+    
+List all instances at once, not per region
 
+    ec2list --region eu* --total
 
 
 Configuration
