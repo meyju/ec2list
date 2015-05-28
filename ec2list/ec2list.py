@@ -84,10 +84,8 @@ def get_inst_placement(i):
 def print_list_head(region,total,up,down,other):
     place = 'Region: ' + region
     stats = 'total: ' + str(total) + ' - up: ' + str(up) + ' - down: ' + str(down) + ' - other: ' + str(other)
-    # main head
-    print(spacing + '='*len(place))
-    print(spacing + place)
-    print(spacing + '='*len(place) + stats.rjust(153-len(place)))
+    print('')
+    print(spacing + place + stats.rjust(153-len(place)))
 
     # table head
     title = []
@@ -115,15 +113,24 @@ def print_list_head(region,total,up,down,other):
 
 
 def print_prog_banner():
-    print(spacing + '########   ######    #######   ##        ####   ######   ########')
-    print(spacing + '##        ##    ##  ##     ##  ##         ##   ##    ##     ##   ')
-    print(spacing + '##        ##               ##  ##         ##   ##           ##   ')
-    print(spacing + '######    ##         #######   ##         ##    ######      ##   ')
-    print(spacing + '##        ##        ##         ##         ##         ##     ##   ')
-    print(spacing + '##        ##    ##  ##         ##         ##   ##    ##     ##   ')
-    print(spacing + '########   ######   #########  ########  ####   ######      ##   ')
-    print(spacing)
+    print(spacing + '-'*153)
+    print(spacing + 'ec2list'.center(153))
+    print(spacing + '-'*153)
 
+
+def print_instances(instances,region, i_count_total, i_count_up, i_count_down, i_count_other):
+    instances.sort()
+
+    if args.showhead:
+        print_list_head(region, i_count_total, i_count_up, i_count_down, i_count_other)
+
+    for inst in instances:
+        name, name_color, private_ip, inst_id, inst_placement, inst_type, pri_dns, pub_ip, pub_dns = inst
+        if args.pub:
+            line = spacing + ' | '.join((name_color, pub_ip, inst_id, inst_placement, inst_type, pub_dns))
+        else:
+            line = spacing + ' | '.join((name_color, private_ip, inst_id, inst_placement, inst_type, pri_dns))
+        print(line)
 
 def defineParser():
     parser = argparse.ArgumentParser(description="Script for commandline worker, to list your ec2 instances. "
@@ -138,6 +145,8 @@ def defineParser():
     group.add_argument('--public', dest = 'pub', action='store_true', help="show public ip/dns")
     group.add_argument('--private', dest = 'priv', action='store_true', help="show private ip/dns (default)")
 
+    parser.add_argument("--total", dest = 'showtotal', required=False,
+                        action='store_true', help="show total list, not per instane")
     parser.add_argument("-nh", "--no-head", dest = 'showhead', default=True, required=False,
                         action='store_false', help="don't show table head")
     parser.add_argument("-nb", "--no-banner", dest = 'showbanner', default=True, required=False,
@@ -163,16 +172,15 @@ def main():
     # All or specific regions?
     if len(args.aws_region) == 1 and args.aws_region[0] == "all":
         rr = boto.ec2.regions()
+        rr.sort(key=lambda x: x.name)
     elif len(args.aws_region) == 1 and (("*" in str(args.aws_region)) or ("?" in str(args.aws_region))):
         rr = []
         for x in boto.ec2.regions():
             if fnmatch.fnmatch(str(getattr(x,'name')), str(args.aws_region)[2:-2]):
                 rr.append(x)
+        rr.sort(key=lambda x: x.name)
     else:
         rr = [boto.ec2.get_region(x) for x in args.aws_region]
-
-    # Sort regions
-    rr.sort(key=lambda x: x.name)
 
     # Clear screen
     if args.cls:
@@ -181,15 +189,18 @@ def main():
     if args.showbanner:
         print_prog_banner()
 
+    region_nr = 0
     for reg in rr:
         conn = reg.connect(profile_name=args.aws_profile)
         reservations = conn.get_all_instances()
 
-        a_instances = []
-        i_count_total = 0
-        i_count_up = 0
-        i_count_down = 0
-        i_count_other = 0
+        if (region_nr == 0 and args.showtotal is True) or args.showtotal is False:
+            a_instances = []
+            i_count_total = 0
+            i_count_up = 0
+            i_count_down = 0
+            i_count_other = 0
+        region_nr += 1
 
         for r in reservations:
             for i in r.instances:
@@ -203,15 +214,11 @@ def main():
                     i_count_other += 1
                 i_count_total += 1
 
-        a_instances.sort()
+        if args.showtotal is False:
+            print_instances(a_instances, reg.name, i_count_total, i_count_up, i_count_down, i_count_other)
 
-        if args.showhead:
-            print_list_head(reg.name, i_count_total, i_count_up, i_count_down, i_count_other)
-
-        for inst in a_instances:
-            name, name_color, private_ip, inst_id, inst_placement, inst_type, pri_dns, pub_ip, pub_dns = inst
-            if args.pub:
-                line = spacing + ' | '.join((name_color, pub_ip, inst_id, inst_placement, inst_type, pub_dns))
-            else:
-                line = spacing + ' | '.join((name_color, private_ip, inst_id, inst_placement, inst_type, pri_dns))
-            print(line)
+    if args.showtotal is True:
+        if region_nr == 1:
+            print_instances(a_instances, reg.name, i_count_total, i_count_up, i_count_down, i_count_other)
+        else:
+            print_instances(a_instances, 'multiple '+ str(region_nr), i_count_total, i_count_up, i_count_down, i_count_other)
