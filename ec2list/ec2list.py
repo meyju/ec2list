@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 
 #
 #   Autor: Julian Meyer <jm@julianmeyer.de>
@@ -24,6 +24,7 @@ import boto.ec2
 import os
 import argparse
 import fnmatch
+import ConfigParser
 
 
 class ansi_color:
@@ -90,7 +91,7 @@ def print_list_head(region,total,up,down,other):
     # table head
     title = []
     dash = []
-    if args.pub:
+    if args.view == 'public':
         view = 'Public'
     else:
         view = 'Private'
@@ -117,6 +118,9 @@ def print_prog_banner():
     print(spacing + 'ec2list'.center(153))
     print(spacing + '-'*153)
 
+def set_tty_name(profile_name):
+    str_profile_name = ' ('+profile_name+')' if profile_name and str(profile_name) != 'default' else ''
+    print('\033]0;ec2list' + str_profile_name + '\007')
 
 def print_instances(instances,region, i_count_total, i_count_up, i_count_down, i_count_other):
     instances.sort()
@@ -126,69 +130,127 @@ def print_instances(instances,region, i_count_total, i_count_up, i_count_down, i
 
     for inst in instances:
         name, name_color, private_ip, inst_id, inst_placement, inst_type, pri_dns, pub_ip, pub_dns = inst
-        if args.pub:
+        if args.view == 'public':
             line = spacing + ' | '.join((name_color, pub_ip, inst_id, inst_placement, inst_type, pub_dns))
         else:
             line = spacing + ' | '.join((name_color, private_ip, inst_id, inst_placement, inst_type, pri_dns))
         print(line)
 
-def defineParser():
+def str2bool(v):
+    return str(v).lower() in ("yes", "true", "t", "1")
+
+def configLoad():
+
+    # Default Values
+    parser_defaults = { "aws_profile":"default",
+                        "region": ['eu-central-1'],
+                        "view":"private",
+                        "showtotal": False,
+                        "showhead": True,
+                        "showbanner": True,
+                        "clearscreen": False,
+                        "ttyrename": False
+    }
+
+    # Get Config File
+    configfile = False
+    if os.path.isfile(os.path.expanduser('~/.ec2list')):
+        configfile = '~/.ec2list'
+    else:
+        if os.path.isfile(os.path.expanduser('~/.aws/ec2list')):
+            configfile = '~/.aws/ec2list'
+
+
+    if configfile:
+        print('Configfile: ' + configfile)
+        config = ConfigParser.SafeConfigParser()
+        config.read(os.path.expanduser(configfile))
+        if config.has_section('default'):
+            parser_defaults.update(dict(config.items('default')))
+
+
     parser = argparse.ArgumentParser(description="Script for commandline worker, to list your ec2 instances. "
                                                  "Support's awscli/boto profiles and multiple aws regions.")
 
-    parser.add_argument("--region", dest = 'aws_region', required=False, nargs='+', default=['eu-central-1'],
+    parser.set_defaults(**parser_defaults)
+
+    parser.add_argument("--region", dest = 'region', required=False, nargs='+',
                         help="AWS Region(s) you wish to look for instances. Specific the region(s) or 'all'")
-    parser.add_argument("--profile", dest = 'aws_profile', required=False, default='default',
+    parser.add_argument("--profile", dest = 'aws_profile', required=False,
                         help="The profile config you want to use from awscli/boto")
 
     group = parser.add_mutually_exclusive_group()
-    group.add_argument('--public', dest = 'pub', action='store_true', help="show public ip/dns")
-    group.add_argument('--private', dest = 'priv', action='store_true', help="show private ip/dns (default)")
+    group.add_argument('--public', dest = 'view', action='store_const', const='public', help="show public ip/dns")
+    group.add_argument('--private', dest = 'view', action='store_const', const='private', help="show private ip/dns")
 
     parser.add_argument("--total", dest = 'showtotal', required=False,
-                        action='store_true', help="show total list, not per instane")
-    parser.add_argument("-nh", "--no-head", dest = 'showhead', default=True, required=False,
-                        action='store_false', help="don't show table head")
-    parser.add_argument("-nb", "--no-banner", dest = 'showbanner', default=True, required=False,
-                        action='store_false', help="don't show programm")
-    parser.add_argument("-cls", "--clear-screen", dest = 'cls', required=False,
-                        action='store_true', help="Clear screen before printing output")
+                        action='store_true', help="show total list, not per region")
+    parser.add_argument("-nh", "--no-head", dest = 'showhead', required=False, action='store_false',
+                        help="don't show table head")
+    parser.add_argument("-nb", "--no-banner", dest = 'showbanner', required=False, action='store_false',
+                        help="don't show programm")
+    parser.add_argument("-cls", "--clear-screen", dest = 'clearscreen', required=False, action='store_true',
+                        help="Clear screen before printing output")
+    parser.add_argument("--ttyrename", dest = 'ttyrename', required=False, action='store_true',
+                        help="set terminal name")
 
-    return parser
+
+    # Profile Config
+    config_profile_name = parser.parse_args().aws_profile
+    if configfile and config_profile_name and config.has_section(config_profile_name):
+        parser_defaults.update(dict(config.items(config_profile_name)))
+        parser.set_defaults(**parser_defaults)
+
+    final_config = parser.parse_args()
+
+    # Convert ini file values to correct type
+    final_config.showtotal = str2bool(final_config.showtotal)
+    final_config.showhead = str2bool(final_config.showhead)
+    final_config.showbanner = str2bool(final_config.showbanner)
+    final_config.clearscreen = str2bool(final_config.clearscreen)
+    final_config.view = 'public' if final_config.view.lower() == 'public' else 'private'
+    if isinstance(final_config.region, str):
+        final_config.region =  final_config.region.replace(" ", "").split(',')
+
+    return final_config
 
 
 def main():
 
     # Get Args
     global args
-    args = defineParser().parse_args()
+    args = configLoad()
 
+    # All or specific regions?
+    if len(args.region) == 1 and args.region[0] == "all":
+        rr = boto.ec2.regions()
+        rr.sort(key=lambda x: x.name)
+    elif len(args.region) == 1 and (("*" in str(args.region)) or ("?" in str(args.region))):
+        rr = []
+        for x in boto.ec2.regions():
+            if fnmatch.fnmatch(str(getattr(x,'name')), str(args.region)[2:-2]):
+                rr.append(x)
+        rr.sort(key=lambda x: x.name)
+    else:
+        rr = [boto.ec2.get_region(x) for x in args.region]
+
+    # layout screen
     global spacing
     if args.showhead:
         spacing = ' '
     else:
         spacing = ''
 
-    # All or specific regions?
-    if len(args.aws_region) == 1 and args.aws_region[0] == "all":
-        rr = boto.ec2.regions()
-        rr.sort(key=lambda x: x.name)
-    elif len(args.aws_region) == 1 and (("*" in str(args.aws_region)) or ("?" in str(args.aws_region))):
-        rr = []
-        for x in boto.ec2.regions():
-            if fnmatch.fnmatch(str(getattr(x,'name')), str(args.aws_region)[2:-2]):
-                rr.append(x)
-        rr.sort(key=lambda x: x.name)
-    else:
-        rr = [boto.ec2.get_region(x) for x in args.aws_region]
-
-    # Clear screen
-    if args.cls:
+    if args.clearscreen :
         os.system('cls' if os.name == 'nt' else 'clear')
+
+    if args.ttyrename:
+        set_tty_name(args.aws_profile)
 
     if args.showbanner:
         print_prog_banner()
 
+    # get instances and list it
     region_nr = 0
     for reg in rr:
         conn = reg.connect(profile_name=args.aws_profile)
