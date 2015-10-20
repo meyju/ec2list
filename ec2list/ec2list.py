@@ -162,7 +162,6 @@ def configLoad():
 
 
     if configfile:
-        print('Configfile: ' + configfile)
         config = ConfigParser.SafeConfigParser()
         config.read(os.path.expanduser(configfile))
         if config.has_section('default'):

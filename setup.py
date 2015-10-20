@@ -45,7 +45,7 @@ setup(
     zip_safe=True,
 
     packages=find_packages(exclude=['build', '_docs', 'templates']),
-    install_requires=['boto>=2.36.0'],
+    install_requires=['boto>=2.36.0', 'configparser'],
 
     # To provide executable scripts, use entry points in preference to the
     # "scripts" keyword. Entry points provide cross-platform support and allow
