@@ -4,15 +4,14 @@ Script for commandline worker, to list your ec2 instances. Support's awscli/boto
 
 ![ec2list screenshot](_docs/img/ec2list.png?raw=true "ec2list screenshot")
 
-Requirements
-------------
+# Requirements
 
 - Python >= 2.6
 - Boto >= 2.36.0
 
 
-Installation
-------------
+# Installation
+
 
 Optionally create a virtual environment and activate it. Then just run
 `pip install ec2list`.
@@ -22,8 +21,7 @@ For script usage, run:
     ec2list --help
 
 
-Examples
---------
+# Examples
 
 List instances from project1 profile
 
@@ -52,10 +50,9 @@ List all instances at once, not per region
     ec2list --region eu* --total
 
 
-Configuration
--------------
+# Configuration
 
-You need to have read access to Amazon EC2. Setup an appropriate IAM policy.
+You need to have read access to Amazon EC2 api. Setup an appropriate IAM policy.
 
 Setup your AWS Credentials:
 
@@ -66,7 +63,7 @@ _~/.aws/config_
     [profile project1]
     region = eu-west-1
 
-_~/.aws/credentials
+_~/.aws/credentials_
 
     [default]
     aws_access_key_id = <Your AWS Access Key ID>
@@ -78,8 +75,45 @@ _~/.aws/credentials
 For further information how to setup your credentials see the offical AWS Userguide:
 [AWS Command Line Interface - Configuration](http://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html#cli-config-files)
 
-Copyright
----------
+## ec2list Configuration
+
+You can also configure the behavior of ec2list. Write your configuration file either in `~/.ec2list` or `~/.aws/ec2list`. 
+
+The configuration is processed and overwritten in this order: 
+
+`coded default -> configfile 'default' section -> configfile 'profile' section -> commandline arguments`
+
+Following Options can be writen in your config file:
+
+* region <- specific the region or multiple to list your instances
+* view <- 'public' or 'private' - which view do you want on the instances. 
+* showtotal <- 'true' or 'false' - list all instances of multiple regions at once
+* showhead <- 'true' or 'false' - show table head before listing your instances
+* showbanner <- 'true' or 'false' - show program name before listing your instances
+* clearscreen <- 'true' or 'false' - clear screen before listing your instances
+* ttyrename <- 'true' or 'false' - rename your ssh session, useful if your are using multiple tabs
+
+Here are some examples
+
+    [default]
+    ttyrename = true
+    clearscreen = true
+    view = private
+    
+    [project1]
+    view = public
+    region = eu-west-1, eu-central-1
+    
+    [project2]
+    view = private
+    region = eu-central-1
+    
+    [project3]
+    view = private
+    region = us-west-*
+    showtotal = true
+    
+# Copyright
 
 Copyright 2015 Julian Meyer
 
