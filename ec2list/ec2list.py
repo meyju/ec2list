@@ -75,7 +75,7 @@ def get_inst_type(i):
 
 
 def get_inst_id(i):
-    return i.id.ljust(10)
+    return i.id.ljust(19)
 
 
 def get_inst_placement(i):
@@ -100,8 +100,8 @@ def print_list_head(region,total,up,down,other):
     dash.append('-'*40)
     title.append(' | ' + (view + ' IP').ljust(15))
     dash.append('-|-' + '-'*15)
-    title.append(' | ' + 'Inst. ID'.ljust(10))
-    dash.append('-|-' + '-'*10)
+    title.append(' | ' + 'Inst. ID'.ljust(19))
+    dash.append('-|-' + '-'*19)
     title.append(' | ' + 'A.-Zone'.ljust(13))
     dash.append('-|-' + '-'*13)
     title.append(' | ' + 'Inst. Type'.ljust(12))
